@@ -3,9 +3,9 @@ name: Android CI
 on:
   push:
     branches: [ main, master ]
+  pull_request:
   workflow_dispatch:
 
-# همه دستورها داخل پوشه پروژه اجرا شود
 defaults:
   run:
     working-directory: "VPN APP"
@@ -24,15 +24,16 @@ jobs:
           java-version: 17
           cache: gradle
 
-      - name: Make gradlew executable
-        run: chmod +x gradlew
+      - name: Setup Gradle 8.7
+        uses: gradle/gradle-build-action@v3
+        with:
+          gradle-version: 8.7
 
       - name: Build Debug APK
-        run: ./gradlew :app:assembleDebug
+        run: gradle :app:assembleDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          # مسیر نسبت به ریشه ریپو است (نه working-directory)
           path: VPN APP/app/build/outputs/apk/debug/app-debug.apk

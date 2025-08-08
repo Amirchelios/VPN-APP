@@ -12,27 +12,41 @@ import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class ProxiesFragment : Fragment() {
     private var adapter: ProxiesListAdapter? = null
+    private lateinit var emptyState: View
+    private lateinit var recycler: RecyclerView
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         val v = inflater.inflate(R.layout.fragment_proxies, container, false)
-        val rv = v.findViewById<RecyclerView>(R.id.recycler)
-        rv.layoutManager = LinearLayoutManager(requireContext())
-        adapter = ProxiesListAdapter()
-        rv.adapter = adapter
-        adapter?.refresh(requireContext())
-
+        
+        emptyState = v.findViewById(R.id.emptyState)
+        recycler = v.findViewById(R.id.recycler)
+        
+        recycler.layoutManager = LinearLayoutManager(requireContext())
+        adapter = ProxiesListAdapter { refreshUI() }
+        recycler.adapter = adapter
+        
         v.findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
             AddServerDialogFragment().show(parentFragmentManager, "add_server")
         }
+        
+        refreshUI()
         return v
+    }
+
+    private fun refreshUI() {
+        adapter?.refresh(requireContext())
+        val hasItems = adapter?.itemCount ?: 0 > 0
+        emptyState.visibility = if (hasItems) View.GONE else View.VISIBLE
+        recycler.visibility = if (hasItems) View.VISIBLE else View.GONE
     }
 
     override fun onResume() {
         super.onResume()
-        adapter?.refresh(requireContext())
+        refreshUI()
     }
 }
 

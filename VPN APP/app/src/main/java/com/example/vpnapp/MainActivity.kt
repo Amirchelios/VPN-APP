@@ -10,11 +10,11 @@ import androidx.core.content.ContextCompat
 import androidx.viewpager2.widget.ViewPager2
 import com.example.vpnapp.service.XrayVpnService
 import com.google.android.material.appbar.MaterialToolbar
-import com.google.android.material.floatingactionbutton.FloatingActionButton
+
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
 import com.example.vpnapp.ui.MainPagerAdapter
-import com.example.vpnapp.ui.AddServerDialogFragment
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -36,10 +36,7 @@ class MainActivity : AppCompatActivity() {
             tab.text = if (position == 0) "خانه" else "پروکسی‌ها"
         }.attach()
 
-        findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
-            // Open add/import dialog fragment
-            AddServerDialogFragment().show(supportFragmentManager, "add_server")
-        }
+
     }
 
     private fun requestVpnPermissionAndStart() {

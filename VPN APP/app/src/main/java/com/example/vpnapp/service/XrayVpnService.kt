@@ -43,15 +43,17 @@ class XrayVpnService : VpnService() {
     }
 
     private fun startVpn(link: String) {
-        val selected = com.example.vpnapp.data.ProfileStore.getSelected(applicationContext)
-        val profile = if (!link.isNullOrBlank()) LinkParser.parseLink(link) else selected?.let { LinkParser.parseLink(it.link) }
-        if (profile == null) {
-            stopSelf()
-            return
-        }
-        CoreManager.ensureCorePrepared(applicationContext)
-
         try {
+            val selected = com.example.vpnapp.data.ProfileStore.getSelected(applicationContext)
+            val profile = if (!link.isNullOrBlank()) LinkParser.parseLink(link) else selected?.let { LinkParser.parseLink(it.link) }
+            if (profile == null) {
+                android.util.Log.e("XrayVpnService", "No valid profile found")
+                stopSelf()
+                return
+            }
+            
+            CoreManager.ensureCorePrepared(applicationContext)
+
             val builder = Builder()
             builder.setSession(profile.name)
             builder.addAddress("10.0.0.2", 24)
@@ -67,8 +69,13 @@ class XrayVpnService : VpnService() {
             if (fd != null && fd > 0) {
                 try { CoreManager.tryStartTun2Socks(applicationContext, fd) } catch (_: Throwable) {}
             }
-        } catch (_: Throwable) {
+        } catch (e: Throwable) {
+            android.util.Log.e("XrayVpnService", "Error establishing VPN", e)
             stopVpn()
+            stopSelf()
+        }
+        } catch (e: Throwable) {
+            android.util.Log.e("XrayVpnService", "Fatal error in startVpn", e)
             stopSelf()
         }
     }

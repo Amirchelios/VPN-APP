@@ -7,30 +7,84 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.vpnapp.R
 import com.example.vpnapp.service.XrayVpnService
 import com.google.android.material.button.MaterialButton
+import com.google.android.material.snackbar.Snackbar
 
 class HomeFragment : Fragment() {
+    private lateinit var txtStatus: TextView
+    private lateinit var txtServerInfo: TextView
+    private lateinit var txtPing: TextView
+    private lateinit var txtUptime: TextView
+    private lateinit var imgStatus: ImageView
+    private lateinit var btnConnect: MaterialButton
+    private lateinit var btnDisconnect: MaterialButton
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
         val v = inflater.inflate(R.layout.fragment_home, container, false)
-        v.findViewById<MaterialButton>(R.id.btnConnect).setOnClickListener {
-            // Require a selected profile before requesting VPN permission
+        
+        initializeViews(v)
+        setupClickListeners(v)
+        updateUI()
+        
+        return v
+    }
+
+    private fun initializeViews(v: View) {
+        txtStatus = v.findViewById(R.id.txtStatus)
+        txtServerInfo = v.findViewById(R.id.txtServerInfo)
+        txtPing = v.findViewById(R.id.txtPing)
+        txtUptime = v.findViewById(R.id.txtUptime)
+        imgStatus = v.findViewById(R.id.imgStatus)
+        btnConnect = v.findViewById(R.id.btnConnect)
+        btnDisconnect = v.findViewById(R.id.btnDisconnect)
+    }
+
+    private fun setupClickListeners(v: View) {
+        btnConnect.setOnClickListener {
             val selected = com.example.vpnapp.data.ProfileStore.getSelected(requireContext())
             if (selected == null) {
-                com.google.android.material.snackbar.Snackbar.make(v, "یک پروکسی انتخاب کنید", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show()
+                Snackbar.make(v, "یک پروکسی انتخاب کنید", Snackbar.LENGTH_SHORT).show()
             } else {
                 requestVpnPermissionAndStart()
             }
         }
-        v.findViewById<MaterialButton>(R.id.btnDisconnect).setOnClickListener { stopVpn() }
-        return v
+        btnDisconnect.setOnClickListener { 
+            try {
+                stopVpn()
+            } catch (e: Exception) {
+                Snackbar.make(v, "خطا در قطع اتصال", Snackbar.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun updateUI() {
+        val selected = com.example.vpnapp.data.ProfileStore.getSelected(requireContext())
+        if (selected != null) {
+            txtServerInfo.text = selected.name
+        } else {
+            txtServerInfo.text = "سرور انتخاب نشده"
+        }
+        
+        // Default values
+        txtStatus.text = "قطع شده"
+        txtPing.text = "-- ms"
+        txtUptime.text = "00:00:00"
+        imgStatus.setImageResource(android.R.drawable.presence_offline)
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateUI()
     }
 
     private fun requestVpnPermissionAndStart() {

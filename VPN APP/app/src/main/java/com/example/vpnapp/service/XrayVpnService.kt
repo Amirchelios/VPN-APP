@@ -1,0 +1,103 @@
+// This file name is created to match the class after rename for clarity.
+package com.example.vpnapp.service
+
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.content.Intent
+import android.net.VpnService
+import android.os.Build
+import android.os.ParcelFileDescriptor
+import androidx.core.app.NotificationCompat
+import com.example.vpnapp.R
+import com.example.vpnapp.core.CoreManager
+import com.example.vpnapp.parser.LinkParser
+
+class XrayVpnService : VpnService() {
+
+    private var vpnInterface: ParcelFileDescriptor? = null
+
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        when (intent?.action) {
+            ACTION_START -> {
+                startForeground(NOTIFICATION_ID, createNotification())
+                val link = intent.getStringExtra(EXTRA_LINK).orEmpty()
+                startVpn(link)
+            }
+            ACTION_STOP -> {
+                stopVpn()
+                stopForeground(STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+        }
+        return START_STICKY
+    }
+
+    private fun startVpn(link: String) {
+        val profile = LinkParser.parseLink(link)
+        CoreManager.ensureCorePrepared(applicationContext)
+
+        val builder = Builder()
+        builder.setSession(profile?.name ?: "VPN")
+        builder.addAddress("10.0.0.2", 24)
+        builder.addDnsServer("1.1.1.1")
+        builder.addDnsServer("8.8.8.8")
+        try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
+        builder.addRoute("0.0.0.0", 0)
+
+        vpnInterface = builder.establish()
+
+        CoreManager.startCoreWithProfile(applicationContext, profile)
+    }
+
+    private fun stopVpn() {
+        CoreManager.stopCore()
+        try { vpnInterface?.close() } catch (_: Exception) {}
+        vpnInterface = null
+    }
+
+    private fun createNotification(): Notification {
+        val channelId = ensureNotificationChannel()
+        return NotificationCompat.Builder(this, channelId)
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setContentTitle(getString(R.string.app_name))
+            .setContentText(getString(R.string.notification_running))
+            .setOngoing(true)
+            .build()
+    }
+
+    private fun ensureNotificationChannel(): String {
+        val channelId = "vpn_service"
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (nm.getNotificationChannel(channelId) == null) {
+                val channel = NotificationChannel(
+                    channelId,
+                    getString(R.string.notification_channel_name),
+                    NotificationManager.IMPORTANCE_LOW
+                ).apply {
+                    description = getString(R.string.notification_channel_desc)
+                    setShowBadge(false)
+                }
+                nm.createNotificationChannel(channel)
+            }
+        }
+        return channelId
+    }
+
+    override fun onDestroy() {
+        stopVpn()
+        super.onDestroy()
+    }
+
+    companion object {
+        const val ACTION_START = "com.example.vpnapp.action.START"
+        const val ACTION_STOP = "com.example.vpnapp.action.STOP"
+        const val EXTRA_LINK = "com.example.vpnapp.extra.LINK"
+
+        private const val NOTIFICATION_ID = 1001
+    }
+}
+
+

@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">VPN App</string>
+    <string name="btn_import_start">Import &amp; Start</string>
+    <string name="btn_stop">Stop</string>
+    <string name="hint_link">Paste VMESS/VLESS/Trojan/SS link</string>
+    <string name="notification_channel_name">VPN Service</string>
+    <string name="notification_channel_desc">Foreground notifications for VPN</string>
+    <string name="notification_running">VPN is running</string>
+</resources>
+
+

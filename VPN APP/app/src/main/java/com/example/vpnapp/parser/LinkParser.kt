@@ -44,18 +44,49 @@ object LinkParser {
             val userInfo = uri.userInfo ?: ""
             val host = uri.host ?: ""
             val port = if (uri.port != -1) uri.port else 443
-            val name = "VLESS"
+            val qp = splitQuery(uri)
+            val security = qp["security"]?.lowercase()
+            val isTls = security == "tls" || security == "reality" || security == "xtls"
+            val sni = qp["sni"] ?: qp["host"]
+            val alpn = qp["alpn"]
+            val path = qp["path"]
+            val hostHeader = qp["host"]
+            val type = qp["type"] ?: qp["network"] ?: "tcp"
+            val headerType = qp["headerType"]?.lowercase()
             VpnProfile(
-                name = name,
+                name = qp["name"] ?: "VLESS",
                 type = "vless",
                 uri = link,
                 serverHost = host,
                 serverPort = port,
-                userId = userInfo
+                userId = userInfo,
+                transport = type,
+                path = path,
+                hostHeader = hostHeader,
+                headerType = headerType,
+                sni = sni,
+                alpn = alpn,
+                tlsEnabled = isTls,
+                tlsInsecure = qp["insecure"] == "1" || qp["allowInsecure"] == "1",
+                flow = qp["flow"]
             )
         } catch (_: Exception) {
             null
         }
+    }
+
+    private fun splitQuery(uri: URI): Map<String, String> {
+        val q = uri.rawQuery ?: return emptyMap()
+        return q.split('&').mapNotNull {
+            if (it.isBlank()) null else {
+                val idx = it.indexOf('=')
+                if (idx <= 0) null else {
+                    val k = java.net.URLDecoder.decode(it.substring(0, idx), "UTF-8")
+                    val v = java.net.URLDecoder.decode(it.substring(idx + 1), "UTF-8")
+                    k to v
+                }
+            }
+        }.toMap()
     }
 }
 

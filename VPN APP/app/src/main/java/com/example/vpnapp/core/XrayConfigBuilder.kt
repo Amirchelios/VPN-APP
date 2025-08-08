@@ -64,11 +64,7 @@ object XrayConfigBuilder {
                         })
                     })
                 })
-                put("streamSettings", JSONObject().apply {
-                    put("network", "tcp")
-                    put("security", "tls")
-                    put("tlsSettings", JSONObject().apply { put("serverName", profile.serverHost ?: "") })
-                })
+                put("streamSettings", buildStreamSettings(profile))
             }
             "vmess" -> JSONObject().apply {
                 put("tag", "proxy")
@@ -87,14 +83,49 @@ object XrayConfigBuilder {
                         })
                     })
                 })
-                put("streamSettings", JSONObject().apply {
-                    put("network", "tcp")
-                    put("security", "tls")
-                    put("tlsSettings", JSONObject().apply { put("serverName", profile.serverHost ?: "") })
-                })
+                put("streamSettings", buildStreamSettings(profile))
             }
             else -> JSONObject().apply { put("protocol", "freedom"); put("tag", "proxy") }
         }
+    }
+
+    private fun buildStreamSettings(profile: VpnProfile): JSONObject {
+        val network = (profile.transport ?: "tcp").lowercase()
+        val tlsEnabled = profile.tlsEnabled ?: false
+        val sni = profile.sni ?: profile.serverHost ?: ""
+        val insecure = profile.tlsInsecure ?: false
+
+        val obj = JSONObject().apply { put("network", network) }
+
+        if (tlsEnabled) {
+            obj.put("security", "tls")
+            obj.put("tlsSettings", JSONObject().apply {
+                put("serverName", sni)
+                put("allowInsecure", insecure)
+                if (!profile.alpn.isNullOrBlank()) put("alpn", JSONArray().put(profile.alpn))
+            })
+        } else {
+            obj.put("security", "none")
+        }
+
+        when (network) {
+            "ws" -> obj.put("wsSettings", JSONObject().apply {
+                if (!profile.path.isNullOrBlank()) put("path", profile.path)
+                if (!profile.hostHeader.isNullOrBlank()) put("headers", JSONObject().apply { put("Host", profile.hostHeader) })
+            })
+            "tcp" -> if (profile.headerType == "http") {
+                obj.put("tcpSettings", JSONObject().apply {
+                    put("header", JSONObject().apply {
+                        put("type", "http")
+                        if (!profile.hostHeader.isNullOrBlank()) put("request", JSONObject().apply {
+                            put("headers", JSONObject().apply { put("Host", JSONArray().put(profile.hostHeader)) })
+                            put("path", JSONArray().put(profile.path ?: "/"))
+                        })
+                    })
+                })
+            }
+        }
+        return obj
     }
 }
 

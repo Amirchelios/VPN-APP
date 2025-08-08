@@ -12,6 +12,7 @@ object CoreManager {
 
     @Volatile
     private var coreProcess: Process? = null
+    @Volatile private var tun2socksProcess: Process? = null
 
     // Versioning placeholder if needed later
     private const val XRAY_VERSION = "1.8.15"
@@ -70,6 +71,9 @@ object CoreManager {
 
         coreProcess = pb.start()
         attachLogging(coreProcess!!, context)
+
+        // Optional tun2socks bridge if provided
+        tryStartTun2Socks(context)
     }
 
     fun stopCore() {
@@ -78,6 +82,12 @@ object CoreManager {
         } catch (_: Exception) {
         } finally {
             coreProcess = null
+        }
+        try {
+            tun2socksProcess?.destroy()
+        } catch (_: Exception) {
+        } finally {
+            tun2socksProcess = null
         }
     }
 
@@ -100,6 +110,40 @@ object CoreManager {
 
         startReaderThread("xray-stdout", process.inputStream)
         startReaderThread("xray-stderr", process.errorStream)
+    }
+
+    private fun tryStartTun2Socks(context: Context) {
+        val abi = getAbiTag()
+        val assetPath = "cores/$abi/tun2socks"
+        val dest = File(coreDir(context), "tun2socks")
+        val am = context.assets
+        try {
+            am.open(assetPath).use { input ->
+                FileOutputStream(dest).use { output ->
+                    val buffer = ByteArray(8 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        output.write(buffer, 0, read)
+                    }
+                }
+            }
+            dest.setExecutable(true)
+        } catch (_: Exception) {
+            // No tun2socks in assets; skip
+            return
+        }
+
+        // Start tun2socks to forward TUN to local socks at 127.0.0.1:10808
+        try {
+            val args = listOf(dest.absolutePath, "--loglevel", "info", "--socks-server-addr", "127.0.0.1:10808")
+            tun2socksProcess = ProcessBuilder(args)
+                .directory(coreDir(context))
+                .redirectErrorStream(true)
+                .start()
+            attachLogging(tun2socksProcess!!, context)
+        } catch (_: Exception) {
+        }
     }
 }
 

@@ -28,6 +28,7 @@ class ProxiesListAdapter : RecyclerView.Adapter<ProxiesListAdapter.VH>() {
         holder.title.text = item.name
         holder.itemView.setOnClickListener {
             ProfileStore.setSelected(holder.itemView.context, item.id)
+            notifyDataSetChanged()
         }
         holder.btnDelete.setOnClickListener {
             ProfileStore.remove(holder.itemView.context, item.id)

@@ -28,16 +28,6 @@
         android:layout_height="match_parent"
         app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAdd"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:contentDescription="Add"
-        app:srcCompat="@android:drawable/ic_input_add"
-        app:layout_anchorGravity="bottom|end"
-        app:layout_anchor="@id/viewPager" />
-
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
 

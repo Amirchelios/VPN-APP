@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.example.vpnapp.R
+import com.google.android.material.floatingactionbutton.FloatingActionButton
 
 class ProxiesFragment : Fragment() {
     private var adapter: ProxiesListAdapter? = null
@@ -22,6 +23,10 @@ class ProxiesFragment : Fragment() {
         adapter = ProxiesListAdapter()
         rv.adapter = adapter
         adapter?.refresh(requireContext())
+
+        v.findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
+            AddServerDialogFragment().show(parentFragmentManager, "add_server")
+        }
         return v
     }
 

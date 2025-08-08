@@ -71,9 +71,6 @@ object CoreManager {
 
         coreProcess = pb.start()
         attachLogging(coreProcess!!, context)
-
-        // Optional tun2socks bridge if provided
-        tryStartTun2Socks(context)
     }
 
     fun stopCore() {

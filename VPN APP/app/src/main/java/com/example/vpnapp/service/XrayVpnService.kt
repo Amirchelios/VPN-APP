@@ -63,7 +63,8 @@ class XrayVpnService : VpnService() {
             vpnInterface = builder.establish()
 
             CoreManager.startCoreWithProfile(applicationContext, profile)
-            vpnInterface?.fileDescriptor?.let { fd ->
+            val fd = vpnInterface?.fd
+            if (fd != null && fd > 0) {
                 try { CoreManager.tryStartTun2Socks(applicationContext, fd) } catch (_: Throwable) {}
             }
         } catch (_: Throwable) {

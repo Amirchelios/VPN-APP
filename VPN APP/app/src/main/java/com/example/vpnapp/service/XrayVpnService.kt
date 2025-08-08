@@ -35,7 +35,12 @@ class XrayVpnService : VpnService() {
     }
 
     private fun startVpn(link: String) {
-        val profile = LinkParser.parseLink(link)
+        val selected = com.example.vpnapp.data.ProfileStore.getSelected(applicationContext)
+        val profile = if (!link.isNullOrBlank()) LinkParser.parseLink(link) else selected?.let { LinkParser.parseLink(it.link) }
+        if (profile == null) {
+            stopSelf()
+            return
+        }
         CoreManager.ensureCorePrepared(applicationContext)
 
         val builder = Builder()

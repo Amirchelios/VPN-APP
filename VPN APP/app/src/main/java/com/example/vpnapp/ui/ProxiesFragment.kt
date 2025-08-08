@@ -18,7 +18,9 @@ class ProxiesFragment : Fragment() {
         val v = inflater.inflate(R.layout.fragment_proxies, container, false)
         val rv = v.findViewById<RecyclerView>(R.id.recycler)
         rv.layoutManager = LinearLayoutManager(requireContext())
-        rv.adapter = ProxiesListAdapter()
+        val adapter = ProxiesListAdapter()
+        rv.adapter = adapter
+        adapter.refresh(requireContext())
         return v
     }
 }

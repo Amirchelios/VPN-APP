@@ -7,25 +7,37 @@ import android.os.Bundle
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.viewpager2.widget.ViewPager2
 import com.example.vpnapp.service.XrayVpnService
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.tabs.TabLayout
+import com.google.android.material.tabs.TabLayoutMediator
 
 class MainActivity : AppCompatActivity() {
 
-    private lateinit var editLink: TextInputEditText
+    private lateinit var viewPager: ViewPager2
+    private lateinit var tabLayout: TabLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
 
-        editLink = findViewById(R.id.editLink)
-        val btnImportStart = findViewById<MaterialButton>(R.id.btnImportStart)
-        val btnStop = findViewById<MaterialButton>(R.id.btnStop)
+        val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
+        setSupportActionBar(toolbar)
 
-        btnImportStart.setOnClickListener { requestVpnPermissionAndStart() }
-        btnStop.setOnClickListener { stopVpn() }
+        tabLayout = findViewById(R.id.tabLayout)
+        viewPager = findViewById(R.id.viewPager)
+        viewPager.adapter = MainPagerAdapter(this)
+        TabLayoutMediator(tabLayout, viewPager) { tab, position ->
+            tab.text = if (position == 0) "خانه" else "پروکسی‌ها"
+        }.attach()
+
+        findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
+            // Open add/import dialog fragment
+            AddServerDialogFragment().show(supportFragmentManager, "add_server")
+        }
     }
 
     private fun requestVpnPermissionAndStart() {
@@ -40,7 +52,7 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_VPN_PREPARE && resultCode == Activity.RESULT_OK) {
-            val link = editLink.text?.toString()?.trim().orEmpty()
+            val link = "" // link is provided by selected profile later
             val intent = Intent(this, XrayVpnService::class.java).apply {
                 action = XrayVpnService.ACTION_START
                 putExtra(XrayVpnService.EXTRA_LINK, link)

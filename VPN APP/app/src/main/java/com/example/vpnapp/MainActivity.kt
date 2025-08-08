@@ -13,6 +13,8 @@ import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.tabs.TabLayout
 import com.google.android.material.tabs.TabLayoutMediator
+import com.example.vpnapp.ui.MainPagerAdapter
+import com.example.vpnapp.ui.AddServerDialogFragment
 
 class MainActivity : AppCompatActivity() {
 

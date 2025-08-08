@@ -112,7 +112,7 @@ object CoreManager {
         startReaderThread("xray-stderr", process.errorStream)
     }
 
-    private fun tryStartTun2Socks(context: Context) {
+    fun tryStartTun2Socks(context: Context, tunFd: Int) {
         val abi = getAbiTag()
         val assetPath = "cores/$abi/tun2socks"
         val dest = File(coreDir(context), "tun2socks")
@@ -134,9 +134,14 @@ object CoreManager {
             return
         }
 
-        // Start tun2socks to forward TUN to local socks at 127.0.0.1:10808
+        // Start tun2socks to forward TUN FD to local socks at 127.0.0.1:10808
         try {
-            val args = listOf(dest.absolutePath, "--loglevel", "info", "--socks-server-addr", "127.0.0.1:10808")
+            val args = listOf(
+                dest.absolutePath,
+                "--loglevel", "info",
+                "--tunfd", tunFd.toString(),
+                "--socks-server-addr", "127.0.0.1:10808"
+            )
             tun2socksProcess = ProcessBuilder(args)
                 .directory(coreDir(context))
                 .redirectErrorStream(true)

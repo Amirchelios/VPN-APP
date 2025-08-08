@@ -20,7 +20,15 @@ class HomeFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         val v = inflater.inflate(R.layout.fragment_home, container, false)
-        v.findViewById<MaterialButton>(R.id.btnConnect).setOnClickListener { requestVpnPermissionAndStart() }
+        v.findViewById<MaterialButton>(R.id.btnConnect).setOnClickListener {
+            // Require a selected profile before requesting VPN permission
+            val selected = com.example.vpnapp.data.ProfileStore.getSelected(requireContext())
+            if (selected == null) {
+                com.google.android.material.snackbar.Snackbar.make(v, "یک پروکسی انتخاب کنید", com.google.android.material.snackbar.Snackbar.LENGTH_SHORT).show()
+            } else {
+                requestVpnPermissionAndStart()
+            }
+        }
         v.findViewById<MaterialButton>(R.id.btnDisconnect).setOnClickListener { stopVpn() }
         return v
     }

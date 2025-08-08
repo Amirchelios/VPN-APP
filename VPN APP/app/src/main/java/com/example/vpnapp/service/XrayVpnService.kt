@@ -19,17 +19,25 @@ class XrayVpnService : VpnService() {
     private var vpnInterface: ParcelFileDescriptor? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> {
-                startForeground(NOTIFICATION_ID, createNotification())
-                val link = intent.getStringExtra(EXTRA_LINK).orEmpty()
-                startVpn(link)
+        try {
+            when (intent?.action) {
+                ACTION_START -> {
+                    startForeground(NOTIFICATION_ID, createNotification())
+                    val link = intent.getStringExtra(EXTRA_LINK).orEmpty()
+                    startVpn(link)
+                }
+                ACTION_STOP -> {
+                    stopVpn()
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+                else -> return START_NOT_STICKY
             }
-            ACTION_STOP -> {
-                stopVpn()
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
-            }
+        } catch (_: Throwable) {
+            // Silently stop on unexpected error to avoid app crash
+            try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Throwable) {}
+            stopSelf()
+            return START_NOT_STICKY
         }
         return START_STICKY
     }
@@ -43,17 +51,25 @@ class XrayVpnService : VpnService() {
         }
         CoreManager.ensureCorePrepared(applicationContext)
 
-        val builder = Builder()
-        builder.setSession(profile?.name ?: "VPN")
-        builder.addAddress("10.0.0.2", 24)
-        builder.addDnsServer("1.1.1.1")
-        builder.addDnsServer("8.8.8.8")
-        try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
-        builder.addRoute("0.0.0.0", 0)
+        try {
+            val builder = Builder()
+            builder.setSession(profile.name)
+            builder.addAddress("10.0.0.2", 24)
+            builder.addDnsServer("1.1.1.1")
+            builder.addDnsServer("8.8.8.8")
+            try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
+            builder.addRoute("0.0.0.0", 0)
 
-        vpnInterface = builder.establish()
+            vpnInterface = builder.establish()
 
-        CoreManager.startCoreWithProfile(applicationContext, profile)
+            CoreManager.startCoreWithProfile(applicationContext, profile)
+            vpnInterface?.fileDescriptor?.let { fd ->
+                try { CoreManager.tryStartTun2Socks(applicationContext, fd) } catch (_: Throwable) {}
+            }
+        } catch (_: Throwable) {
+            stopVpn()
+            stopSelf()
+        }
     }
 
     private fun stopVpn() {

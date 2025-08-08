@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.vpnapp.R
 
 class ProxiesFragment : Fragment() {
+    private var adapter: ProxiesListAdapter? = null
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -18,10 +19,15 @@ class ProxiesFragment : Fragment() {
         val v = inflater.inflate(R.layout.fragment_proxies, container, false)
         val rv = v.findViewById<RecyclerView>(R.id.recycler)
         rv.layoutManager = LinearLayoutManager(requireContext())
-        val adapter = ProxiesListAdapter()
+        adapter = ProxiesListAdapter()
         rv.adapter = adapter
-        adapter.refresh(requireContext())
+        adapter?.refresh(requireContext())
         return v
+    }
+
+    override fun onResume() {
+        super.onResume()
+        adapter?.refresh(requireContext())
     }
 }
 

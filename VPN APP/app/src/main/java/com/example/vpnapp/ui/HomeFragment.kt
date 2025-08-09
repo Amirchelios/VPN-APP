@@ -42,9 +42,13 @@ class HomeFragment : Fragment() {
         btnConnect.setOnClickListener { startVpn() }
         btnDisconnect.setOnClickListener { stopVpn() }
         
-        // Add button handler
+        // Add button handler with safety
         v.findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
-            AddServerDialogFragment().show(parentFragmentManager, "add_server")
+            try {
+                AddServerDialogFragment().show(childFragmentManager, "add_server")
+            } catch (e: Exception) {
+                Snackbar.make(v, "خطا در نمایش فرم افزودن سرور", Snackbar.LENGTH_SHORT).show()
+            }
         }
         
         updateUI()
@@ -72,7 +76,7 @@ class HomeFragment : Fragment() {
             }
             requireContext().startService(intent)
         } catch (e: Exception) {
-            // Handle gracefully
+            // ignore
         }
     }
 

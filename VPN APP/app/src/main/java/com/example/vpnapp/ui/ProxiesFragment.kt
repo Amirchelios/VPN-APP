@@ -26,11 +26,15 @@ class ProxiesFragment : Fragment() {
         recycler = v.findViewById(R.id.recycler)
         
         recycler.layoutManager = LinearLayoutManager(requireContext())
-        adapter = ProxiesListAdapter { refreshUI() }
+        adapter = ProxiesListAdapter()
         recycler.adapter = adapter
         
         v.findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
-            AddServerDialogFragment().show(parentFragmentManager, "add_server")
+            try {
+                AddServerDialogFragment().show(childFragmentManager, "add_server")
+            } catch (e: Exception) {
+                android.util.Log.e("ProxiesFragment", "Error showing dialog", e)
+            }
         }
         
         refreshUI()
@@ -38,10 +42,17 @@ class ProxiesFragment : Fragment() {
     }
 
     private fun refreshUI() {
-        adapter?.refresh(requireContext())
-        val hasItems = adapter?.itemCount ?: 0 > 0
-        emptyState.visibility = if (hasItems) View.GONE else View.VISIBLE
-        recycler.visibility = if (hasItems) View.VISIBLE else View.GONE
+        try {
+            adapter?.refresh(requireContext())
+            val count = adapter?.itemCount ?: 0
+            val hasItems = count > 0
+            emptyState.visibility = if (hasItems) View.GONE else View.VISIBLE
+            recycler.visibility = if (hasItems) View.VISIBLE else View.GONE
+        } catch (e: Exception) {
+            android.util.Log.e("ProxiesFragment", "Error refreshing UI", e)
+            emptyState.visibility = View.VISIBLE
+            recycler.visibility = View.GONE
+        }
     }
 
     override fun onResume() {

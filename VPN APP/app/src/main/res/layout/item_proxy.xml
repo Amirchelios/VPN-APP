@@ -73,7 +73,7 @@
                 android:layout_width="8dp"
                 android:layout_height="8dp"
                 android:layout_marginTop="2dp"
-                android:background="@android:drawable/shape_ring"
+                android:background="@android:drawable/button_onoff_indicator_off"
                 android:backgroundTint="@android:color/darker_gray" />
 
         </LinearLayout>

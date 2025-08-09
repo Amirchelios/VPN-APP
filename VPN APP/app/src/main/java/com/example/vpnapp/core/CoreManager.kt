@@ -7,14 +7,14 @@ import java.io.File
 import java.io.FileOutputStream
 import com.example.vpnapp.model.VpnProfile
 import com.example.vpnapp.core.XrayConfigBuilder.buildConfigJson
+import android.system.Os
+import android.system.OsConstants
 
 object CoreManager {
 
     @Volatile
     private var coreProcess: Process? = null
     @Volatile private var tun2socksProcess: Process? = null
-
-    private const val XRAY_VERSION = "1.8.15"
 
     private fun getAbiTag(): String {
         val abi = Build.SUPPORTED_ABIS.firstOrNull()?.lowercase() ?: "arm64-v8a"
@@ -27,17 +27,19 @@ object CoreManager {
         }
     }
 
-    // Use codeCacheDir to avoid exec restrictions on filesDir
-    private fun coreDir(context: Context): File = File(context.codeCacheDir, "xray").apply { mkdirs() }
+    // Use app private "app_bin" directory created by getDir, which is commonly used for executables
+    private fun coreDir(context: Context): File = context.getDir("bin", Context.MODE_PRIVATE).apply { mkdirs() }
     private fun coreBinary(context: Context): File = File(coreDir(context), "xray")
     private fun configFile(context: Context): File = File(coreDir(context), "config.json")
     private fun logFile(context: Context): File = File(coreDir(context), "xray.log")
 
     private fun makeExecutable(file: File) {
         try {
-            file.setExecutable(true)
-            Runtime.getRuntime().exec(arrayOf("/system/bin/chmod", "700", file.absolutePath)).waitFor()
-        } catch (_: Exception) { }
+            // Owner rwx
+            Os.chmod(file.absolutePath, OsConstants.S_IRUSR or OsConstants.S_IWUSR or OsConstants.S_IXUSR)
+        } catch (e: Throwable) {
+            try { file.setExecutable(true, true) } catch (_: Exception) {}
+        }
     }
 
     fun ensureCorePrepared(context: Context) {

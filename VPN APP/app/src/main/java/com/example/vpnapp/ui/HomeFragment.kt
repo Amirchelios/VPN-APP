@@ -1,7 +1,10 @@
 package com.example.vpnapp.ui
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.VpnService
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -28,6 +31,17 @@ class HomeFragment : Fragment() {
     private lateinit var txtUptime: TextView
     private lateinit var btnConnect: MaterialButton
     private lateinit var btnDisconnect: MaterialButton
+
+    private var connected: Boolean = false
+
+    private val statusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == XrayVpnService.ACTION_STATUS) {
+                connected = intent.getBooleanExtra(XrayVpnService.EXTRA_CONNECTED, false)
+                applyStatus()
+            }
+        }
+    }
 
     private val vpnPrepareLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -69,13 +83,23 @@ class HomeFragment : Fragment() {
         return v
     }
 
+    override fun onResume() {
+        super.onResume()
+        requireContext().registerReceiver(statusReceiver, IntentFilter(XrayVpnService.ACTION_STATUS))
+        updateUI()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        try { requireContext().unregisterReceiver(statusReceiver) } catch (_: Exception) {}
+    }
+
     private fun startVpn() {
         val selected = ProfileStore.getSelected(requireContext())
         if (selected == null) {
             Snackbar.make(requireView(), "ابتدا یک سرور انتخاب کنید", Snackbar.LENGTH_LONG).show()
             return
         }
-        // Validate link before starting service
         val parsed = LinkParser.parseLink(selected.link)
         if (parsed == null) {
             Snackbar.make(requireView(), "لینک نامعتبر است", Snackbar.LENGTH_LONG).show()
@@ -105,9 +129,7 @@ class HomeFragment : Fragment() {
                 action = XrayVpnService.ACTION_STOP
             }
             ContextCompat.startForegroundService(requireContext(), intent)
-        } catch (e: Exception) {
-            // ignore
-        }
+        } catch (e: Exception) { }
     }
 
     private fun updateUI() {
@@ -117,11 +139,17 @@ class HomeFragment : Fragment() {
         } else {
             txtServerInfo.text = "سرور انتخاب نشده"
         }
+        applyStatus()
     }
 
-    override fun onResume() {
-        super.onResume()
-        updateUI()
+    private fun applyStatus() {
+        if (connected) {
+            txtStatus.text = "متصل"
+            imgStatus.setImageResource(android.R.drawable.presence_online)
+        } else {
+            txtStatus.text = "قطع شده"
+            imgStatus.setImageResource(android.R.drawable.presence_offline)
+        }
     }
 }
 

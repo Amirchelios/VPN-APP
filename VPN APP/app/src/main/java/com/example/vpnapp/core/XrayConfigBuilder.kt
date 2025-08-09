@@ -7,11 +7,11 @@ import org.json.JSONObject
 object XrayConfigBuilder {
 
     fun buildConfigJson(profile: VpnProfile?): String {
-        val log = JSONObject().apply {
-            put("loglevel", "info")
-        }
+        val log = JSONObject().apply { put("loglevel", "info") }
 
-        // Inbound: local SOCKS to be used by tun2socks later (placeholder)
+        // Inbounds:
+        // 1) local SOCKS for apps (kept)
+        // 2) optional dokodemo-door is not needed as tun2socks connects to socks port
         val inbounds = JSONArray().apply {
             put(
                 JSONObject().apply {
@@ -25,24 +25,30 @@ object XrayConfigBuilder {
         }
 
         val outbounds = JSONArray()
-        if (profile != null) {
-            outbounds.put(buildOutbound(profile))
-        }
+        if (profile != null) outbounds.put(buildOutbound(profile))
         outbounds.put(JSONObject().apply { put("protocol", "freedom"); put("tag", "direct") })
         outbounds.put(JSONObject().apply { put("protocol", "blackhole"); put("tag", "block") })
 
         val routing = JSONObject().apply {
             put("domainStrategy", "AsIs")
-            put("rules", JSONArray())
+            put("rules", JSONArray().apply {
+                // route all from socks-in to proxy if available
+                if (profile != null) {
+                    put(JSONObject().apply {
+                        put("type", "field")
+                        put("inboundTag", JSONArray().put("socks-in"))
+                        put("outboundTag", "proxy")
+                    })
+                }
+            })
         }
 
-        val root = JSONObject().apply {
+        return JSONObject().apply {
             put("log", log)
             put("inbounds", inbounds)
             put("outbounds", outbounds)
             put("routing", routing)
-        }
-        return root.toString()
+        }.toString()
     }
 
     private fun buildOutbound(profile: VpnProfile): JSONObject {
@@ -59,6 +65,7 @@ object XrayConfigBuilder {
                                 put(JSONObject().apply {
                                     put("id", profile.userId ?: "")
                                     put("encryption", "none")
+                                    profile.flow?.let { put("flow", it) }
                                 })
                             })
                         })

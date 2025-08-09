@@ -28,14 +28,15 @@ class XrayVpnService : VpnService() {
                 }
                 ACTION_STOP -> {
                     stopVpn()
-                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Throwable) {}
+                    sendStatus(false)
                     stopSelf()
                 }
                 else -> return START_NOT_STICKY
             }
         } catch (_: Throwable) {
-            // Silently stop on unexpected error to avoid app crash
             try { stopForeground(STOP_FOREGROUND_REMOVE) } catch (_: Throwable) {}
+            sendStatus(false)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -45,9 +46,10 @@ class XrayVpnService : VpnService() {
     private fun startVpn(link: String) {
         try {
             val selected = com.example.vpnapp.data.ProfileStore.getSelected(applicationContext)
-            val profile = if (!link.isNullOrBlank()) LinkParser.parseLink(link) else selected?.let { LinkParser.parseLink(it.link) }
+            val profile = if (link.isNotBlank()) LinkParser.parseLink(link) else selected?.let { LinkParser.parseLink(it.link) }
             if (profile == null) {
                 android.util.Log.e("XrayVpnService", "No valid profile found")
+                sendStatus(false)
                 stopSelf()
                 return
             }
@@ -59,7 +61,6 @@ class XrayVpnService : VpnService() {
             builder.addAddress("10.0.0.2", 24)
             builder.addDnsServer("1.1.1.1")
             builder.addDnsServer("8.8.8.8")
-            try { builder.addDisallowedApplication(packageName) } catch (_: Exception) {}
             builder.addRoute("0.0.0.0", 0)
 
             vpnInterface = builder.establish()
@@ -69,9 +70,11 @@ class XrayVpnService : VpnService() {
             if (fd != null && fd > 0) {
                 try { CoreManager.tryStartTun2Socks(applicationContext, fd) } catch (_: Throwable) {}
             }
+            sendStatus(true)
         } catch (e: Throwable) {
             android.util.Log.e("XrayVpnService", "Error establishing VPN", e)
             stopVpn()
+            sendStatus(false)
             stopSelf()
         }
     }
@@ -80,6 +83,13 @@ class XrayVpnService : VpnService() {
         CoreManager.stopCore()
         try { vpnInterface?.close() } catch (_: Exception) {}
         vpnInterface = null
+    }
+
+    private fun sendStatus(connected: Boolean) {
+        try {
+            val intent = Intent(ACTION_STATUS).apply { putExtra(EXTRA_CONNECTED, connected) }
+            sendBroadcast(intent)
+        } catch (_: Throwable) { }
     }
 
     private fun createNotification(): Notification {
@@ -117,6 +127,8 @@ class XrayVpnService : VpnService() {
         const val ACTION_START = "com.example.vpnapp.START_VPN"
         const val ACTION_STOP = "com.example.vpnapp.STOP_VPN"
         const val EXTRA_LINK = "link"
+        const val ACTION_STATUS = "com.example.vpnapp.VPN_STATUS"
+        const val EXTRA_CONNECTED = "connected"
         private const val NOTIFICATION_ID = 1
     }
 }

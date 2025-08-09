@@ -120,7 +120,7 @@ class HomeFragment : Fragment() {
             putExtra(XrayVpnService.EXTRA_LINK, selected.link)
         }
         ContextCompat.startForegroundService(requireContext(), intent)
-        Snackbar.make(requireView(), "در حال اتصال...", Snackbar.LENGTH_SHORT).show()
+        txtStatus.text = "در حال اتصال..."
     }
 
     private fun stopVpn() {

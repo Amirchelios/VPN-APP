@@ -23,6 +23,7 @@ class LogsFragment : Fragment() {
         val v = inflater.inflate(R.layout.fragment_logs, container, false)
         txtLogs = v.findViewById(R.id.txtLogs)
         v.findViewById<View>(R.id.btnCopy).setOnClickListener { copyLogs() }
+        v.findViewById<View>(R.id.btnClear).setOnClickListener { clearLogs() }
         loadLogs()
         return v
     }
@@ -32,7 +33,7 @@ class LogsFragment : Fragment() {
         loadLogs()
     }
 
-    private fun coreDir(): File = File(requireContext().filesDir, "xray")
+    private fun coreDir(): File = File(requireContext().codeCacheDir, "xray")
     private fun logFile(): File = File(coreDir(), "xray.log")
 
     private fun loadLogs() {
@@ -48,6 +49,13 @@ class LogsFragment : Fragment() {
         try {
             val cm = requireContext().getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             cm.setPrimaryClip(ClipData.newPlainText("xray-log", txtLogs.text))
+        } catch (_: Exception) { }
+    }
+
+    private fun clearLogs() {
+        try {
+            logFile().delete()
+            loadLogs()
         } catch (_: Exception) { }
     }
 }

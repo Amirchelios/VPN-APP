@@ -27,33 +27,41 @@ object CoreManager {
         }
     }
 
-    private fun coreDir(context: Context): File = File(context.filesDir, "xray").apply { mkdirs() }
+    // Use codeCacheDir to avoid exec restrictions on filesDir
+    private fun coreDir(context: Context): File = File(context.codeCacheDir, "xray").apply { mkdirs() }
     private fun coreBinary(context: Context): File = File(coreDir(context), "xray")
     private fun configFile(context: Context): File = File(coreDir(context), "config.json")
     private fun logFile(context: Context): File = File(coreDir(context), "xray.log")
 
+    private fun makeExecutable(file: File) {
+        try {
+            file.setExecutable(true)
+            Runtime.getRuntime().exec(arrayOf("/system/bin/chmod", "700", file.absolutePath)).waitFor()
+        } catch (_: Exception) { }
+    }
+
     fun ensureCorePrepared(context: Context) {
         val binary = coreBinary(context)
-        if (binary.exists()) return
-
-        val abi = getAbiTag()
-        val assetPath = "cores/$abi/xray"
-        val am = context.assets
-        try {
-            am.open(assetPath).use { input ->
-                FileOutputStream(binary).use { output ->
-                    val buffer = ByteArray(8 * 1024)
-                    while (true) {
-                        val read = input.read(buffer)
-                        if (read == -1) break
-                        output.write(buffer, 0, read)
+        if (!binary.exists()) {
+            val abi = getAbiTag()
+            val assetPath = "cores/$abi/xray"
+            val am = context.assets
+            try {
+                am.open(assetPath).use { input ->
+                    FileOutputStream(binary).use { output ->
+                        val buffer = ByteArray(8 * 1024)
+                        while (true) {
+                            val read = input.read(buffer)
+                            if (read == -1) break
+                            output.write(buffer, 0, read)
+                        }
                     }
                 }
+            } catch (e: Exception) {
+                throw IllegalStateException("Xray binary not found in assets at $assetPath. Please add it.", e)
             }
-        } catch (e: Exception) {
-            throw IllegalStateException("Xray binary not found in assets at $assetPath. Please add it.", e)
         }
-        binary.setExecutable(true)
+        makeExecutable(binary)
     }
 
     fun startCoreWithProfile(context: Context, profile: VpnProfile?): Boolean {
@@ -125,7 +133,7 @@ object CoreManager {
                     }
                 }
             }
-            dest.setExecutable(true)
+            makeExecutable(dest)
         } catch (_: Exception) {
             return
         }

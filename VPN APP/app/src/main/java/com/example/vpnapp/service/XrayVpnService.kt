@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.ParcelFileDescriptor
 import androidx.core.app.NotificationCompat
 import com.example.vpnapp.R
+import com.example.vpnapp.core.CoreFetcher
 import com.example.vpnapp.core.CoreManager
 import com.example.vpnapp.parser.LinkParser
 
@@ -53,7 +54,8 @@ class XrayVpnService : VpnService() {
                 stopSelf()
                 return
             }
-            
+
+            // prepare core (from assets or previous download)
             CoreManager.ensureCorePrepared(applicationContext)
 
             val builder = Builder()
@@ -65,7 +67,12 @@ class XrayVpnService : VpnService() {
 
             vpnInterface = builder.establish()
 
-            val ok = CoreManager.startCoreWithProfile(applicationContext, profile)
+            var ok = CoreManager.startCoreWithProfile(applicationContext, profile)
+            if (!ok) {
+                // Try to fetch correct ABI core online (requires network)
+                try { CoreFetcher.downloadAndInstall(applicationContext) } catch (_: Throwable) {}
+                ok = CoreManager.startCoreWithProfile(applicationContext, profile)
+            }
             if (!ok) {
                 android.util.Log.e("XrayVpnService", "Failed to start xray core")
                 stopVpn()
@@ -73,6 +80,7 @@ class XrayVpnService : VpnService() {
                 stopSelf()
                 return
             }
+
             val fd = vpnInterface?.fd
             if (fd != null && fd > 0) {
                 try { CoreManager.tryStartTun2Socks(applicationContext, fd) } catch (_: Throwable) {}

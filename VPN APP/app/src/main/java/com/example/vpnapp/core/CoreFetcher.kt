@@ -20,7 +20,6 @@ object CoreFetcher {
     }
 
     private fun candidateUrls(abi: String): List<String> {
-        // Known patterns for Xray-core Android community builds. May vary by release; try several.
         val base = "https://github.com/XTLS/Xray-core/releases/latest/download"
         return when (abi) {
             "arm64-v8a" -> listOf(
@@ -48,7 +47,6 @@ object CoreFetcher {
         } catch (_: Exception) {}
     }
 
-    // Internal access to CoreManager paths without exposing them publicly
     private object CoreManagerInternal {
         fun coreDir(context: Context): File = context.getDir("bin", Context.MODE_PRIVATE)
         fun coreBinary(context: Context): File = File(coreDir(context), "xray")
@@ -70,9 +68,9 @@ object CoreFetcher {
                 conn.instanceFollowRedirects = true
                 conn.connect()
                 if (conn.responseCode in 200..299) {
+                    var found = false
                     ZipInputStream(conn.inputStream).use { zip ->
                         var entry = zip.nextEntry
-                        var found = false
                         while (entry != null) {
                             if (!entry.isDirectory && entry.name.endsWith("xray")) {
                                 val outFile = CoreManagerInternal.coreBinary(context)
@@ -90,17 +88,17 @@ object CoreFetcher {
                             }
                             entry = zip.nextEntry
                         }
-                        if (!found) {
-                            log(context, "[error] Zip did not contain xray binary")
-                            continue
-                        }
                     }
-                    // mark executable
-                    try {
-                        android.system.Os.chmod(CoreManagerInternal.coreBinary(context).absolutePath, android.system.OsConstants.S_IRUSR or android.system.OsConstants.S_IWUSR or android.system.OsConstants.S_IXUSR)
-                    } catch (_: Throwable) { CoreManagerInternal.coreBinary(context).setExecutable(true, true) }
-                    log(context, "[info] Core downloaded and installed for abi=$abi")
-                    return true
+                    if (found) {
+                        // mark executable
+                        try {
+                            android.system.Os.chmod(CoreManagerInternal.coreBinary(context).absolutePath, android.system.OsConstants.S_IRUSR or android.system.OsConstants.S_IWUSR or android.system.OsConstants.S_IXUSR)
+                        } catch (_: Throwable) { CoreManagerInternal.coreBinary(context).setExecutable(true, true) }
+                        log(context, "[info] Core downloaded and installed for abi=$abi")
+                        return true
+                    } else {
+                        log(context, "[error] Zip did not contain xray binary")
+                    }
                 } else {
                     log(context, "[error] HTTP ${conn.responseCode} for $u")
                 }

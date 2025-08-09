@@ -33,7 +33,7 @@ class LogsFragment : Fragment() {
         loadLogs()
     }
 
-    private fun coreDir(): File = File(requireContext().codeCacheDir, "xray")
+    private fun coreDir(): File = requireContext().getDir("bin", Context.MODE_PRIVATE)
     private fun logFile(): File = File(coreDir(), "xray.log")
 
     private fun loadLogs() {

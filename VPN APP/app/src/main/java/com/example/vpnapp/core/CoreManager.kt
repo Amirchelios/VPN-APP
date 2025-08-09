@@ -27,7 +27,6 @@ object CoreManager {
         }
     }
 
-    // Use app private "app_bin" directory created by getDir, which is commonly used for executables
     private fun coreDir(context: Context): File = context.getDir("bin", Context.MODE_PRIVATE).apply { mkdirs() }
     private fun coreBinary(context: Context): File = File(coreDir(context), "xray")
     private fun configFile(context: Context): File = File(coreDir(context), "config.json")
@@ -35,11 +34,26 @@ object CoreManager {
 
     private fun makeExecutable(file: File) {
         try {
-            // Owner rwx
-            Os.chmod(file.absolutePath, OsConstants.S_IRUSR or OsConstants.S_IWUSR or OsConstants.S_IXUSR)
+            // 0755
+            Os.chmod(
+                file.absolutePath,
+                OsConstants.S_IRUSR or OsConstants.S_IWUSR or OsConstants.S_IXUSR or
+                    OsConstants.S_IRGRP or OsConstants.S_IXGRP or
+                    OsConstants.S_IROTH or OsConstants.S_IXOTH
+            )
         } catch (e: Throwable) {
-            try { file.setExecutable(true, true) } catch (_: Exception) {}
+            try { file.setExecutable(true, false) } catch (_: Exception) {}
         }
+    }
+
+    private fun diagElf(file: File, context: Context) {
+        try {
+            val bytes = file.inputStream().use { it.readNBytes(8) }
+            val isElf = bytes.size >= 4 && bytes[0] == 0x7F.toByte() && bytes[1].toInt() == 'E'.code && bytes[2].toInt() == 'L'.code && bytes[3].toInt() == 'F'.code
+            val cls = if (bytes.size > 4) bytes[4].toInt() else -1 // 1=32,2=64
+            val abiList = Build.SUPPORTED_ABIS.joinToString(",")
+            logFile(context).appendText("[diag] ELF=${isElf} class=${cls} size=${file.length()} abis=${abiList} exec=${file.canExecute()} path=${file.absolutePath}\n")
+        } catch (_: Exception) {}
     }
 
     fun ensureCorePrepared(context: Context) {
@@ -64,7 +78,7 @@ object CoreManager {
             }
         }
         makeExecutable(binary)
-        // diagnostics
+        diagElf(binary, context)
         try {
             val diag = "xray at ${binary.absolutePath} exists=${binary.exists()} size=${binary.length()} canExec=${binary.canExecute()}"
             logFile(context).appendText("[diag] $diag\n")

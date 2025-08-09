@@ -64,6 +64,11 @@ object CoreManager {
             }
         }
         makeExecutable(binary)
+        // diagnostics
+        try {
+            val diag = "xray at ${binary.absolutePath} exists=${binary.exists()} size=${binary.length()} canExec=${binary.canExecute()}"
+            logFile(context).appendText("[diag] $diag\n")
+        } catch (_: Exception) {}
     }
 
     fun startCoreWithProfile(context: Context, profile: VpnProfile?): Boolean {
@@ -136,6 +141,7 @@ object CoreManager {
                 }
             }
             makeExecutable(dest)
+            try { logFile(context).appendText("[diag] tun2socks at ${dest.absolutePath} canExec=${dest.canExecute()}\n") } catch (_: Exception) {}
         } catch (_: Exception) {
             return
         }

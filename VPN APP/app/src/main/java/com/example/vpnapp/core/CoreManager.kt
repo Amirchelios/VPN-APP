@@ -14,7 +14,6 @@ object CoreManager {
     private var coreProcess: Process? = null
     @Volatile private var tun2socksProcess: Process? = null
 
-    // Versioning placeholder if needed later
     private const val XRAY_VERSION = "1.8.15"
 
     private fun getAbiTag(): String {
@@ -31,12 +30,12 @@ object CoreManager {
     private fun coreDir(context: Context): File = File(context.filesDir, "xray").apply { mkdirs() }
     private fun coreBinary(context: Context): File = File(coreDir(context), "xray")
     private fun configFile(context: Context): File = File(coreDir(context), "config.json")
+    private fun logFile(context: Context): File = File(coreDir(context), "xray.log")
 
     fun ensureCorePrepared(context: Context) {
         val binary = coreBinary(context)
         if (binary.exists()) return
 
-        // Extract ABI-specific binary from assets: assets/cores/<abi>/xray
         val abi = getAbiTag()
         val assetPath = "cores/$abi/xray"
         val am = context.assets
@@ -57,49 +56,50 @@ object CoreManager {
         binary.setExecutable(true)
     }
 
-    fun startCoreWithProfile(context: Context, profile: VpnProfile?) {
-        if (coreProcess?.isAlive == true) return
-
+    fun startCoreWithProfile(context: Context, profile: VpnProfile?): Boolean {
+        if (coreProcess?.isAlive == true) return true
         ensureCorePrepared(context)
 
-        val config = buildConfigJson(profile)
-        configFile(context).writeText(config)
+        try {
+            val config = buildConfigJson(profile)
+            configFile(context).writeText(config)
+        } catch (e: Exception) {
+            Log.e("CoreManager", "Failed writing config", e)
+            try { logFile(context).appendText("[error] Failed writing config: ${e.message}\n") } catch (_: Exception) {}
+            return false
+        }
 
-        val pb = ProcessBuilder(listOf(coreBinary(context).absolutePath, "-config", configFile(context).absolutePath))
-            .directory(coreDir(context))
-            .redirectErrorStream(true)
+        return try {
+            val pb = ProcessBuilder(listOf(coreBinary(context).absolutePath, "-config", configFile(context).absolutePath))
+                .directory(coreDir(context))
+                .redirectErrorStream(true)
 
-        coreProcess = pb.start()
-        attachLogging(coreProcess!!, context)
+            coreProcess = pb.start()
+            attachLogging(coreProcess!!, context)
+            true
+        } catch (e: Exception) {
+            Log.e("CoreManager", "Failed starting xray core", e)
+            try { logFile(context).appendText("[error] Failed starting xray: ${e.message}\n") } catch (_: Exception) {}
+            coreProcess = null
+            false
+        }
     }
 
     fun stopCore() {
-        try {
-            coreProcess?.destroy()
-        } catch (_: Exception) {
-        } finally {
-            coreProcess = null
-        }
-        try {
-            tun2socksProcess?.destroy()
-        } catch (_: Exception) {
-        } finally {
-            tun2socksProcess = null
-        }
+        try { coreProcess?.destroy() } catch (_: Exception) {} finally { coreProcess = null }
+        try { tun2socksProcess?.destroy() } catch (_: Exception) {} finally { tun2socksProcess = null }
     }
 
     private fun attachLogging(process: Process, context: Context) {
         val tag = "XrayCore"
-        val logFile = File(coreDir(context), "xray.log")
+        val logFile = logFile(context)
 
         fun startReaderThread(name: String, stream: java.io.InputStream) {
             Thread({
                 stream.bufferedReader().useLines { lines ->
                     lines.forEach { line ->
                         Log.i(tag, line)
-                        try {
-                            logFile.appendText(line + "\n")
-                        } catch (_: Exception) { }
+                        try { logFile.appendText(line + "\n") } catch (_: Exception) { }
                     }
                 }
             }, name).apply { isDaemon = true }.start()
@@ -127,11 +127,9 @@ object CoreManager {
             }
             dest.setExecutable(true)
         } catch (_: Exception) {
-            // No tun2socks in assets; skip
             return
         }
 
-        // Start tun2socks to forward TUN FD to local socks at 127.0.0.1:10808
         try {
             val args = listOf(
                 dest.absolutePath,
@@ -144,7 +142,8 @@ object CoreManager {
                 .redirectErrorStream(true)
                 .start()
             attachLogging(tun2socksProcess!!, context)
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            try { logFile(context).appendText("[error] Failed starting tun2socks: ${e.message}\n") } catch (_: Exception) {}
         }
     }
 }

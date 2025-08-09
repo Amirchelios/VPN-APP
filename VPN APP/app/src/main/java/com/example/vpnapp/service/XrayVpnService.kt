@@ -65,7 +65,14 @@ class XrayVpnService : VpnService() {
 
             vpnInterface = builder.establish()
 
-            CoreManager.startCoreWithProfile(applicationContext, profile)
+            val ok = CoreManager.startCoreWithProfile(applicationContext, profile)
+            if (!ok) {
+                android.util.Log.e("XrayVpnService", "Failed to start xray core")
+                stopVpn()
+                sendStatus(false)
+                stopSelf()
+                return
+            }
             val fd = vpnInterface?.fd
             if (fd != null && fd > 0) {
                 try { CoreManager.tryStartTun2Socks(applicationContext, fd) } catch (_: Throwable) {}

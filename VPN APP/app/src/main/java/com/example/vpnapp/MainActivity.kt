@@ -39,10 +39,13 @@ class MainActivity : AppCompatActivity() {
         viewPager = findViewById(R.id.viewPager)
         viewPager.adapter = MainPagerAdapter(this)
         TabLayoutMediator(tabLayout, viewPager) { tab, position ->
-            tab.text = if (position == 0) "خانه" else "پروکسی‌ها"
+            tab.text = when (position) {
+                0 -> "خانه"
+                1 -> "پروکسی‌ها"
+                else -> "لاگ"
+            }
         }.attach()
 
-        // Ask for notifications permission on Android 13+
         if (Build.VERSION.SDK_INT >= 33) {
             notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
         }
@@ -60,7 +63,7 @@ class MainActivity : AppCompatActivity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         if (requestCode == REQ_VPN_PREPARE && resultCode == Activity.RESULT_OK) {
-            val link = "" // link is provided by selected profile later
+            val link = ""
             val intent = Intent(this, XrayVpnService::class.java).apply {
                 action = XrayVpnService.ACTION_START
                 putExtra(XrayVpnService.EXTRA_LINK, link)

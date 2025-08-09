@@ -5,9 +5,12 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager2.adapter.FragmentStateAdapter
 
 class MainPagerAdapter(activity: AppCompatActivity) : FragmentStateAdapter(activity) {
-    override fun getItemCount(): Int = 2
-    override fun createFragment(position: Int): Fragment =
-        if (position == 0) HomeFragment() else ProxiesFragment()
+    override fun getItemCount(): Int = 3
+    override fun createFragment(position: Int): Fragment = when (position) {
+        0 -> HomeFragment()
+        1 -> ProxiesFragment()
+        else -> LogsFragment()
+    }
 }
 
 

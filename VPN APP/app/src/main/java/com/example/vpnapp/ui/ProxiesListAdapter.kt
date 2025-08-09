@@ -14,38 +14,57 @@ class ProxiesListAdapter(private val onDataChanged: (() -> Unit)? = null) : Recy
     private var selectedId: String? = null
 
     fun refresh(context: android.content.Context) {
-        items.clear()
-        items.addAll(ProfileStore.list(context))
-        selectedId = ProfileStore.getSelected(context)?.id
-        notifyDataSetChanged()
-        onDataChanged?.invoke()
+        try {
+            items.clear()
+            items.addAll(ProfileStore.list(context))
+            selectedId = ProfileStore.getSelected(context)?.id
+            notifyDataSetChanged()
+            onDataChanged?.invoke()
+        } catch (e: Exception) {
+            // Handle error gracefully
+            android.util.Log.e("ProxiesListAdapter", "Error refreshing", e)
+        }
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH {
         val v = LayoutInflater.from(parent.context).inflate(R.layout.item_proxy, parent, false)
         return VH(v)
     }
+    
     override fun getItemCount(): Int = items.size
+    
     override fun onBindViewHolder(holder: VH, position: Int) {
-        val item = items[position]
-        val isSelected = item.id == selectedId
-        
-        holder.title.text = item.name
-        holder.subtitle.text = extractServerInfo(item.link)
-        holder.txtPing.text = "-- ms"
-        
-        // Highlight selected item
-        holder.itemView.isSelected = isSelected
-        holder.itemView.alpha = if (isSelected) 1.0f else 0.7f
-        
-        holder.itemView.setOnClickListener {
-            ProfileStore.setSelected(holder.itemView.context, item.id)
-            refresh(holder.itemView.context)
-        }
-        
-        holder.btnDelete.setOnClickListener {
-            ProfileStore.remove(holder.itemView.context, item.id)
-            refresh(holder.itemView.context)
+        try {
+            val item = items[position]
+            val isSelected = item.id == selectedId
+            
+            holder.title.text = item.name
+            holder.subtitle.text = extractServerInfo(item.link)
+            holder.txtPing.text = "-- ms"
+            
+            // Highlight selected item
+            holder.itemView.isSelected = isSelected
+            holder.itemView.alpha = if (isSelected) 1.0f else 0.7f
+            
+            holder.itemView.setOnClickListener {
+                try {
+                    ProfileStore.setSelected(holder.itemView.context, item.id)
+                    refresh(holder.itemView.context)
+                } catch (e: Exception) {
+                    android.util.Log.e("ProxiesListAdapter", "Error selecting item", e)
+                }
+            }
+            
+            holder.btnDelete.setOnClickListener {
+                try {
+                    ProfileStore.remove(holder.itemView.context, item.id)
+                    refresh(holder.itemView.context)
+                } catch (e: Exception) {
+                    android.util.Log.e("ProxiesListAdapter", "Error deleting item", e)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("ProxiesListAdapter", "Error binding view", e)
         }
     }
 

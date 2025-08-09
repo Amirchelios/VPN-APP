@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.vpnapp.R
 import com.example.vpnapp.data.ProfileStore
+import com.example.vpnapp.parser.LinkParser
 import com.example.vpnapp.service.XrayVpnService
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -74,6 +75,12 @@ class HomeFragment : Fragment() {
             Snackbar.make(requireView(), "ابتدا یک سرور انتخاب کنید", Snackbar.LENGTH_LONG).show()
             return
         }
+        // Validate link before starting service
+        val parsed = LinkParser.parseLink(selected.link)
+        if (parsed == null) {
+            Snackbar.make(requireView(), "لینک نامعتبر است", Snackbar.LENGTH_LONG).show()
+            return
+        }
         val prepareIntent = VpnService.prepare(requireContext())
         if (prepareIntent != null) {
             vpnPrepareLauncher.launch(prepareIntent)
@@ -97,7 +104,7 @@ class HomeFragment : Fragment() {
             val intent = Intent(requireContext(), XrayVpnService::class.java).apply {
                 action = XrayVpnService.ACTION_STOP
             }
-            requireContext().startService(intent)
+            ContextCompat.startForegroundService(requireContext(), intent)
         } catch (e: Exception) {
             // ignore
         }

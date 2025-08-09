@@ -1,12 +1,16 @@
 package com.example.vpnapp.ui
 
+import android.app.Activity
 import android.content.Intent
+import android.net.VpnService
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import com.example.vpnapp.R
 import com.example.vpnapp.data.ProfileStore
@@ -23,6 +27,16 @@ class HomeFragment : Fragment() {
     private lateinit var txtUptime: TextView
     private lateinit var btnConnect: MaterialButton
     private lateinit var btnDisconnect: MaterialButton
+
+    private val vpnPrepareLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            actuallyStartVpn()
+        } else {
+            Snackbar.make(requireView(), "مجوز VPN داده نشد", Snackbar.LENGTH_LONG).show()
+        }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -42,7 +56,6 @@ class HomeFragment : Fragment() {
         btnConnect.setOnClickListener { startVpn() }
         btnDisconnect.setOnClickListener { stopVpn() }
         
-        // Add button handler with safety
         v.findViewById<FloatingActionButton>(R.id.fabAdd).setOnClickListener {
             try {
                 AddServerDialogFragment().show(childFragmentManager, "add_server")
@@ -61,12 +74,22 @@ class HomeFragment : Fragment() {
             Snackbar.make(requireView(), "ابتدا یک سرور انتخاب کنید", Snackbar.LENGTH_LONG).show()
             return
         }
-        
+        val prepareIntent = VpnService.prepare(requireContext())
+        if (prepareIntent != null) {
+            vpnPrepareLauncher.launch(prepareIntent)
+        } else {
+            actuallyStartVpn()
+        }
+    }
+
+    private fun actuallyStartVpn() {
+        val selected = ProfileStore.getSelected(requireContext()) ?: return
         val intent = Intent(requireContext(), XrayVpnService::class.java).apply {
             action = XrayVpnService.ACTION_START
             putExtra(XrayVpnService.EXTRA_LINK, selected.link)
         }
-        requireContext().startService(intent)
+        ContextCompat.startForegroundService(requireContext(), intent)
+        Snackbar.make(requireView(), "در حال اتصال...", Snackbar.LENGTH_SHORT).show()
     }
 
     private fun stopVpn() {

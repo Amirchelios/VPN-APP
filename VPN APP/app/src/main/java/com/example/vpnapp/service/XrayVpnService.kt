@@ -74,10 +74,6 @@ class XrayVpnService : VpnService() {
             stopVpn()
             stopSelf()
         }
-        } catch (e: Throwable) {
-            android.util.Log.e("XrayVpnService", "Fatal error in startVpn", e)
-            stopSelf()
-        }
     }
 
     private fun stopVpn() {
@@ -97,20 +93,17 @@ class XrayVpnService : VpnService() {
     }
 
     private fun ensureNotificationChannel(): String {
-        val channelId = "vpn_service"
+        val channelId = "vpn_service_channel"
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val nm = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            if (nm.getNotificationChannel(channelId) == null) {
-                val channel = NotificationChannel(
-                    channelId,
-                    getString(R.string.notification_channel_name),
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = getString(R.string.notification_channel_desc)
-                    setShowBadge(false)
-                }
-                nm.createNotificationChannel(channel)
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = NotificationChannel(
+                channelId,
+                getString(R.string.notification_channel_name),
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = getString(R.string.notification_channel_desc)
             }
+            manager.createNotificationChannel(channel)
         }
         return channelId
     }
@@ -121,12 +114,9 @@ class XrayVpnService : VpnService() {
     }
 
     companion object {
-        const val ACTION_START = "com.example.vpnapp.action.START"
-        const val ACTION_STOP = "com.example.vpnapp.action.STOP"
-        const val EXTRA_LINK = "com.example.vpnapp.extra.LINK"
-
-        private const val NOTIFICATION_ID = 1001
+        const val ACTION_START = "com.example.vpnapp.START_VPN"
+        const val ACTION_STOP = "com.example.vpnapp.STOP_VPN"
+        const val EXTRA_LINK = "link"
+        private const val NOTIFICATION_ID = 1
     }
 }
-
-

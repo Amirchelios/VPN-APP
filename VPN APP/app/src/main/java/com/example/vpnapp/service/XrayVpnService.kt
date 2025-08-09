@@ -55,8 +55,21 @@ class XrayVpnService : VpnService() {
                 return
             }
 
-            // prepare core (from assets or previous download)
-            CoreManager.ensureCorePrepared(applicationContext)
+            var prepared = false
+            try {
+                CoreManager.ensureCorePrepared(applicationContext)
+                prepared = true
+            } catch (e: Throwable) {
+                // Try online fetch when asset missing
+                try { CoreManagerLog.append(applicationContext, "[warn] ensureCorePrepared failed: ${e.message}") } catch (_: Exception) {}
+                try { prepared = CoreFetcher.downloadAndInstall(applicationContext) } catch (_: Throwable) { prepared = false }
+            }
+            if (!prepared) {
+                try { CoreManagerLog.append(applicationContext, "[error] Core not prepared; aborting") } catch (_: Exception) {}
+                sendStatus(false)
+                stopSelf()
+                return
+            }
 
             val builder = Builder()
             builder.setSession(profile.name)
@@ -69,12 +82,13 @@ class XrayVpnService : VpnService() {
 
             var ok = CoreManager.startCoreWithProfile(applicationContext, profile)
             if (!ok) {
-                // Try to fetch correct ABI core online (requires network)
+                try { CoreManagerLog.append(applicationContext, "[warn] startCore failed; trying online fetch") } catch (_: Exception) {}
                 try { CoreFetcher.downloadAndInstall(applicationContext) } catch (_: Throwable) {}
                 ok = CoreManager.startCoreWithProfile(applicationContext, profile)
             }
             if (!ok) {
                 android.util.Log.e("XrayVpnService", "Failed to start xray core")
+                try { CoreManagerLog.append(applicationContext, "[error] Failed to start xray after fetch") } catch (_: Exception) {}
                 stopVpn()
                 sendStatus(false)
                 stopSelf()
@@ -88,6 +102,7 @@ class XrayVpnService : VpnService() {
             sendStatus(true)
         } catch (e: Throwable) {
             android.util.Log.e("XrayVpnService", "Error establishing VPN", e)
+            try { CoreManagerLog.append(applicationContext, "[error] Exception in startVpn: ${e.message}") } catch (_: Exception) {}
             stopVpn()
             sendStatus(false)
             stopSelf()
@@ -136,6 +151,15 @@ class XrayVpnService : VpnService() {
     override fun onDestroy() {
         stopVpn()
         super.onDestroy()
+    }
+
+    private object CoreManagerLog {
+        fun append(context: Context, msg: String) {
+            try {
+                val f = java.io.File(context.getDir("bin", Context.MODE_PRIVATE), "xray.log")
+                f.appendText(msg + "\n")
+            } catch (_: Exception) {}
+        }
     }
 
     companion object {
